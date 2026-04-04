@@ -3,7 +3,6 @@ import shutil
 import subprocess
 import tempfile
 
-import requests
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from faster_whisper import WhisperModel
@@ -21,9 +20,6 @@ app.add_middleware(
 MODEL_SIZE = os.getenv("WHISPER_MODEL", "base")
 COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
 CPU_THREADS = int(os.getenv("WHISPER_CPU_THREADS", "4"))
-
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434/api/chat")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3")
 
 print(f"[STT] carregando modelo whisper: {MODEL_SIZE} ({COMPUTE_TYPE})")
 model = WhisperModel(
@@ -56,78 +52,7 @@ def convert_audio_for_whisper(input_path: str) -> str:
 
 @app.get("/health")
 def health():
-    return {
-        "ok": True,
-        "model": MODEL_SIZE,
-        "compute_type": COMPUTE_TYPE,
-        "ollama_model": OLLAMA_MODEL,
-    }
-
-@app.post("/chat")
-async def chat(payload: dict):
-    user_text = str(payload.get("text") or "").trim() if False else str(payload.get("text") or "").strip()
-
-    if not user_text:
-        return {
-            "ok": False,
-            "error": "Texto vazio."
-        }
-
-    try:
-        body = {
-            "model": OLLAMA_MODEL,
-            "stream": False,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a friendly English tutor. "
-                        "Always reply in simple natural English. "
-                        "Keep answers short, conversational, and encouraging. "
-                        "If the user makes a grammar mistake, gently provide the corrected sentence."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": user_text,
-                },
-            ],
-        }
-
-        response = requests.post(OLLAMA_URL, json=body, timeout=120)
-        data = response.json()
-
-        if not response.ok:
-            return {
-                "ok": False,
-                "error": data,
-            }
-
-        reply = (
-            data.get("message", {}).get("content", "").strip()
-            if isinstance(data, dict)
-            else ""
-        )
-
-        if not reply:
-            return {
-                "ok": False,
-                "error": "Ollama não retornou resposta."
-            }
-
-        return {
-            "ok": True,
-            "reply": reply,
-            "correction": "",
-            "suggestion": "",
-        }
-
-    except Exception as e:
-        print(f"[CHAT] erro: {e}")
-        return {
-            "ok": False,
-            "error": str(e),
-        }
+    return {"ok": True, "model": MODEL_SIZE, "compute_type": COMPUTE_TYPE}
 
 @app.post("/stt")
 async def stt(audio: UploadFile = File(...)):

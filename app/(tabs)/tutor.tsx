@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../src/styles/theme';
 import { getAiReply } from '../../src/services/aiService';
 import { speakTutorText, stopTutorSpeech } from '../../src/services/ttsService';
+import {
+  canStartRecording,
+  startRecording,
+  stopRecording,
+  finishProcessing,
+  startSpeaking,
+  stopSpeaking,
+  resetVoiceState,
+} from '../../src/services/voiceController';
 import { useVoiceInput } from '../../src/hooks/useVoiceInput';
 import { useReviewMistakes } from '../../src/hooks/useReviewMistakes';
 
@@ -39,6 +48,13 @@ export default function TutorScreen() {
 
   const canSend = useMemo(() => input.trim().length > 0, [input]);
 
+  useEffect(() => {
+    resetVoiceState();
+    return () => {
+      resetVoiceState();
+    };
+  }, []);
+
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
@@ -54,7 +70,7 @@ export default function TutorScreen() {
 
     try {
       Keyboard.dismiss();
-      stopTutorSpeech();
+      await stopTutorSpeech();
 
       const userMessage = {
         id: makeId(),
@@ -101,8 +117,22 @@ export default function TutorScreen() {
         });
       }
 
-      speakTutorText(result.reply);
+      finishProcessing();
+      startSpeaking();
+
+      await speakTutorText(result.reply, {
+        onDone: () => {
+          stopSpeaking();
+        },
+        onStopped: () => {
+          stopSpeaking();
+        },
+        onError: () => {
+          stopSpeaking();
+        },
+      });
     } finally {
+      finishProcessing();
       isHandlingRef.current = false;
     }
   };
@@ -114,7 +144,17 @@ export default function TutorScreen() {
   });
 
   const handleMicPress = async () => {
-    stopTutorSpeech();
+    if (isRecording) {
+      stopRecording();
+      await toggleRecording();
+      return;
+    }
+
+    if (!canStartRecording()) return;
+
+    await stopTutorSpeech();
+    stopSpeaking();
+    startRecording();
     await toggleRecording();
   };
 

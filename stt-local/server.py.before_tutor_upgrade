@@ -1,4 +1,3 @@
-import json
 import os
 import shutil
 import subprocess
@@ -55,27 +54,6 @@ def convert_audio_for_whisper(input_path: str) -> str:
 
     return output_path
 
-def extract_json_block(text: str):
-    text = (text or "").strip()
-    if not text:
-        return None
-
-    try:
-        return json.loads(text)
-    except Exception:
-        pass
-
-    start = text.find("{")
-    end = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        candidate = text[start:end + 1]
-        try:
-            return json.loads(candidate)
-        except Exception:
-            return None
-
-    return None
-
 @app.get("/health")
 def health():
     return {
@@ -87,7 +65,7 @@ def health():
 
 @app.post("/chat")
 async def chat(payload: dict):
-    user_text = str(payload.get("text") or "").strip()
+    user_text = str(payload.get("text") or "").trim() if False else str(payload.get("text") or "").strip()
 
     if not user_text:
         return {
@@ -99,38 +77,22 @@ async def chat(payload: dict):
         body = {
             "model": OLLAMA_MODEL,
             "stream": False,
-            "options": {
-                "num_predict": 80,
-                "temperature": 0.7
-            },
-            "keep_alive": -1,
             "messages": [
                 {
                     "role": "system",
-                    "content": """You are an English tutor for Brazilian learners.
-
-Your job:
-- Talk in simple, natural English.
-- Keep the conversation friendly and short.
-- Do not use emojis.
-- Do not use markdown.
-- Do not use bullets.
-- Use plain text only.
-
-You must always return valid JSON only.
-Return exactly this shape:
-{
-  "reply": "short conversational reply in English",
-  "correction": "corrected version of the user's sentence, or empty string if no correction is needed",
-  "suggestion": "one short tip in English, or empty string if not needed"
-}
-
-Rules:
-- If the user's English has mistakes, fill "correction" with the corrected sentence.
-- If the sentence is already good, keep "correction" empty.
-- "reply" must sound like a real tutor continuing the conversation.
-- "suggestion" must be short and useful.
-- Never return anything outside the JSON object."""
+                    "content": (
+                        """You are a friendly English tutor.
+Always reply in simple natural English.
+Keep answers short and conversational.
+Do not use emojis.
+Do not use special characters.
+Use plain text only.
+If the user makes a grammar mistake, gently provide the corrected sentence.
+ "
+                        "Always reply in simple natural English. "
+                        "Keep answers short, conversational, and encouraging. "
+                        "If the user makes a grammar mistake, gently provide the corrected sentence."""
+                    ),
                 },
                 {
                     "role": "user",
@@ -148,22 +110,11 @@ Rules:
                 "error": data,
             }
 
-        raw_reply = (
+        reply = (
             data.get("message", {}).get("content", "").strip()
             if isinstance(data, dict)
             else ""
         )
-
-        parsed = extract_json_block(raw_reply)
-
-        if parsed:
-            reply = str(parsed.get("reply") or "").strip()
-            correction = str(parsed.get("correction") or "").strip()
-            suggestion = str(parsed.get("suggestion") or "").strip()
-        else:
-            reply = raw_reply.strip()
-            correction = ""
-            suggestion = ""
 
         if not reply:
             return {
@@ -174,8 +125,8 @@ Rules:
         return {
             "ok": True,
             "reply": reply,
-            "correction": correction,
-            "suggestion": suggestion,
+            "correction": "",
+            "suggestion": "",
         }
 
     except Exception as e:

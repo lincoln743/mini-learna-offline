@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../src/styles/theme';
 import { getAiReply } from '../../src/services/aiService';
-import { speakTutorText, stopTutorSpeech } from '../../src/services/ttsService';
+import { speakTutorText } from '../../src/services/ttsService';
 import { useVoiceInput } from '../../src/hooks/useVoiceInput';
 import { useReviewMistakes } from '../../src/hooks/useReviewMistakes';
 
@@ -23,7 +23,6 @@ function makeId() {
 
 export default function TutorScreen() {
   const scrollRef = useRef<ScrollView | null>(null);
-  const isHandlingRef = useRef(false);
   const { addMistake } = useReviewMistakes();
 
   const [input, setInput] = useState('');
@@ -48,62 +47,53 @@ export default function TutorScreen() {
   const handleSend = async (rawText?: string) => {
     const trimmed = String(rawText ?? input).trim();
     if (!trimmed) return;
-    if (isHandlingRef.current) return;
 
-    isHandlingRef.current = true;
+    Keyboard.dismiss();
+
+    const userMessage = {
+      id: makeId(),
+      role: 'user',
+      text: trimmed,
+    };
+
+    let result;
 
     try {
-      Keyboard.dismiss();
-      stopTutorSpeech();
-
-      const userMessage = {
-        id: makeId(),
-        role: 'user',
-        text: trimmed,
+      result = await getAiReply(trimmed);
+    } catch (error) {
+      console.log('[TUTOR] AI ERROR =', error);
+      result = {
+        reply: "Sorry, I couldn't respond.",
+        correction: '',
+        suggestion: '',
       };
+    }
 
-      let result;
+    const assistantMessage = {
+      id: makeId(),
+      role: 'assistant',
+      text: result.reply,
+      correction: result.correction,
+      suggestion: result.suggestion,
+    };
 
-      try {
-        result = await getAiReply(trimmed);
-      } catch (error) {
-        console.log('[TUTOR] AI ERROR =', error);
-        result = {
-          reply: "Sorry, I couldn't respond.",
-          correction: '',
-          suggestion: '',
-        };
-      }
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+    setInput('');
+    speakTutorText(result.reply);
 
-      const assistantMessage = {
-        id: makeId(),
-        role: 'assistant',
-        text: result.reply,
-        correction: result.correction,
-        suggestion: result.suggestion,
-      };
+    requestAnimationFrame(() => {
+      scrollToBottom();
+    });
 
-      setMessages((prev) => [...prev, userMessage, assistantMessage]);
-      setInput('');
-
-      requestAnimationFrame(() => {
-        scrollToBottom();
+    if (result.correction) {
+      addMistake({
+        originalText: trimmed,
+        correctedText: result.correction,
+        explanation:
+          result.suggestion || 'Correction suggested during free conversation.',
+        exampleText: result.reply,
+        errorType: 'Conversa livre',
       });
-
-      if (result.correction) {
-        addMistake({
-          originalText: trimmed,
-          correctedText: result.correction,
-          explanation:
-            result.suggestion || 'Correction suggested during free conversation.',
-          exampleText: result.reply,
-          errorType: 'Conversa livre',
-        });
-      }
-
-      speakTutorText(result.reply);
-    } finally {
-      isHandlingRef.current = false;
     }
   };
 
@@ -112,11 +102,6 @@ export default function TutorScreen() {
       await handleSend(text);
     },
   });
-
-  const handleMicPress = async () => {
-    stopTutorSpeech();
-    await toggleRecording();
-  };
 
   return (
     <KeyboardAvoidingView
@@ -194,7 +179,7 @@ export default function TutorScreen() {
         <View style={styles.inputShell}>
           <TouchableOpacity
             style={[styles.micButton, isRecording && styles.micButtonActive]}
-            onPress={handleMicPress}
+            onPress={toggleRecording}
           >
             <Ionicons
               name={isRecording ? 'mic' : 'mic-outline'}

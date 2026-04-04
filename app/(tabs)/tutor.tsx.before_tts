@@ -13,7 +13,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../src/styles/theme';
 import { buildAiReply } from '../../src/services/conversationEngine';
-import { speakTutorText } from '../../src/services/ttsService';
 import { useVoiceInput } from '../../src/hooks/useVoiceInput';
 import { useReviewMistakes } from '../../src/hooks/useReviewMistakes';
 
@@ -68,7 +67,6 @@ export default function TutorScreen() {
 
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
     setInput('');
-    speakTutorText(result.reply);
 
     requestAnimationFrame(() => {
       scrollToBottom();

@@ -1,26 +1,45 @@
+# Node / Expo
 node_modules/
 .expo/
+.expo-shared/
 dist/
+web-build/
 build/
+
+# Env
 .env
+.env.*
 
 # Python
 .venv/
+venv/
 __pycache__/
 *.pyc
 
-# Audio/temp
+# Audio / temp
 *.wav
 *.m4a
 *.aac
+*.mp3
 
-# Models
+# Models (CRÍTICO)
 *.bin
 *.pt
 *.gguf
-
-# OS
-.DS_Store
+*.onnx
 
 # Logs
 *.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+tmp/
+temp/

@@ -1,96 +1,109 @@
-# 📱 Mini Learna Offline
+# Mini Learna Offline
 
-Aplicativo mobile para aprendizado de inglês com interação por chat e voz, desenvolvido com React Native (Expo) e STT local usando Whisper.
+## Overview
+Mini Learna Offline is a mobile app built with React Native (Expo) that enables real-time English conversation practice using:
 
----
+- 🎤 Speech-to-Text (Whisper local)
+- 🤖 Local AI (Ollama)
+- 🔊 Text-to-Speech (Expo Speech)
 
-## 🚀 Visão Geral
-
-O **Mini Learna** é um app estilo tutor de inglês com foco em:
-
-- Conversação livre com IA
-- Correção automática de frases
-- Revisão de erros
-- Lições com progresso local
-- Entrada por voz com transcrição (Speech-to-Text)
+The app works with a local backend for privacy and low latency.
 
 ---
 
-## 🧠 Funcionalidades
+## Features
 
-### 💬 Conversa Livre
-- Chat com IA (conversationEngine)
-- Correção de frases em inglês
-- Sugestões de melhoria
-
-### 🎤 Voz (STT)
-- Gravação direto no app
-- Transcrição com Whisper local (Python)
-- Integração automática com o chat
-
-### 📊 Revisão de Erros
-- Histórico de correções
-- Aprendizado baseado em erros do usuário
-
-### 📚 Lições
-- Progresso salvo localmente (SQLite)
-- Estrutura modular para expansão
+- Voice conversation with AI
+- Real-time transcription (STT)
+- AI tutor responses
+- Audio playback (TTS)
+- Short-term conversation memory
+- Offline-first architecture
 
 ---
 
-## 🏗️ Arquitetura
+## Tech Stack
 
+### Frontend
+- React Native (Expo SDK 54)
+- Expo Router
+
+### Backend
+- FastAPI (Python)
+- faster-whisper (STT)
+- Ollama (LLM)
+
+---
+
+## Project Structure
+
+```
 mini-learna-offline/
-├── app/ (Expo)
-├── src/
-├── stt-local/
-└── README.md
-
----
-
-## ⚙️ Tecnologias
-
-Frontend:
-- React Native
-- Expo SDK 54
-- SQLite
-
-Backend:
-- Python
-- FastAPI
-- Faster-Whisper
-- FFmpeg
-
----
-
-## ▶️ Como rodar
-
-```bash
-git clone https://github.com/lincoln743/mini-learna-offline.git
-cd mini-learna-offline
-npm install
-npx expo start
+├── app/(tabs)/tutor.tsx
+├── src/services/
+│   ├── aiService.js
+│   ├── sttService.js
+│   └── ttsService.ts
+├── src/hooks/useVoiceInput.js
+├── stt-local/server.py
 ```
 
-STT:
+---
 
+## Setup
+
+### 1. Clone repo
+```bash
+git clone https://github.com/lincoln743/mini-learna-offline
+cd mini-learna-offline
+```
+
+### 2. Backend
 ```bash
 cd stt-local
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-WHISPER_MODEL=small python3 -m uvicorn server:app --host 0.0.0.0 --port 8000
+```
+
+### 3. Run backend
+```bash
+OLLAMA_MODEL=qwen2.5:0.5b python -m uvicorn server:app --host 0.0.0.0 --port 8000
+```
+
+### 4. Frontend
+```bash
+cd ..
+npx expo start
 ```
 
 ---
 
-## 🧪 Status
+## Notes
 
-✔ Funcional  
-🚧 Em evolução (TTS, performance)
+- Make sure Ollama is running locally
+- Ensure phone and backend are on same network
+- Update API URL if needed in services
 
 ---
 
-## 👨‍💻 Autor
+## Status
+
+- Voice flow working (STT → AI → TTS)
+- Conversation memory active
+- Performance optimized (~5–8s response)
+
+---
+
+## Roadmap
+
+- Continuous conversation mode
+- Better AI models
+- APK build
+- UI refinements
+
+---
+
+## Author
 
 Lincoln Pereira

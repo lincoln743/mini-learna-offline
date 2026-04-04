@@ -1,0 +1,56 @@
+[
+  {
+    "id": "1",
+    "title": "Greetings",
+    "titlePt": "Cumprimentos",
+    "level": "Básico",
+    "category": "Dia a dia",
+    "duration": "5 min",
+    "description": "Aprenda saudações simples para começar conversas."
+  },
+  {
+    "id": "2",
+    "title": "Introducing Yourself",
+    "titlePt": "Apresentando-se",
+    "level": "Básico",
+    "category": "Dia a dia",
+    "duration": "6 min",
+    "description": "Pratique como dizer seu nome, profissão e origem."
+  },
+  {
+    "id": "3",
+    "title": "Job Interview",
+    "titlePt": "Entrevista de Emprego",
+    "level": "Básico",
+    "category": "Trabalho",
+    "duration": "8 min",
+    "description": "Frases úteis para entrevistas e apresentação profissional."
+  },
+  {
+    "id": "4",
+    "title": "Supermarket",
+    "titlePt": "Supermercado",
+    "level": "Básico",
+    "category": "Cotidiano",
+    "duration": "7 min",
+    "description": "Vocabulário útil para compras e perguntas comuns."
+  },
+  {
+    "id": "5",
+    "title": "Doctor Visit",
+    "titlePt": "Consulta Médica",
+    "level": "Básico",
+    "category": "Saúde",
+    "duration": "7 min",
+    "description": "Frases importantes para descrever sintomas e entender orientações."
+  },
+  {
+    "id": "6",
+    "title": "Bus and Subway",
+    "titlePt": "Ônibus e Metrô",
+    "level": "Básico",
+    "category": "Transporte",
+    "duration": "6 min",
+    "description": "Perguntas e respostas para se locomover na cidade."
+  }
+]

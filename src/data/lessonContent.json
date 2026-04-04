@@ -1,0 +1,128 @@
+{
+  "1": {
+    "goal": "Aprender cumprimentos básicos em inglês.",
+    "vocabulary": [
+      { "en": "Hello", "pt": "Olá" },
+      { "en": "Good morning", "pt": "Bom dia" },
+      { "en": "Good afternoon", "pt": "Boa tarde" },
+      { "en": "Good evening", "pt": "Boa noite" },
+      { "en": "How are you?", "pt": "Como você está?" }
+    ],
+    "examples": [
+      "Hello! How are you?",
+      "Good morning, teacher.",
+      "Good evening, everyone."
+    ],
+    "exercise": {
+      "question": "Como se diz 'Bom dia' em inglês?",
+      "options": ["Good night", "Good morning", "Goodbye"],
+      "answer": "Good morning"
+    },
+    "finalTip": "Use 'Hello' em situações neutras e 'Good morning' pela manhã."
+  },
+  "2": {
+    "goal": "Aprender a se apresentar em inglês.",
+    "vocabulary": [
+      { "en": "My name is", "pt": "Meu nome é" },
+      { "en": "I am from", "pt": "Eu sou de" },
+      { "en": "I work as", "pt": "Eu trabalho como" },
+      { "en": "Nice to meet you", "pt": "Prazer em conhecer você" }
+    ],
+    "examples": [
+      "My name is Lincoln.",
+      "I am from Brazil.",
+      "Nice to meet you."
+    ],
+    "exercise": {
+      "question": "Qual frase significa 'Meu nome é Ana'?",
+      "options": ["I am Ana", "My name is Ana", "Nice Ana"],
+      "answer": "My name is Ana"
+    },
+    "finalTip": "Use frases curtas e claras ao se apresentar."
+  },
+  "3": {
+    "goal": "Aprender frases úteis para entrevista de emprego.",
+    "vocabulary": [
+      { "en": "I have experience in", "pt": "Eu tenho experiência em" },
+      { "en": "I am responsible", "pt": "Eu sou responsável" },
+      { "en": "Teamwork", "pt": "Trabalho em equipe" },
+      { "en": "Problem solving", "pt": "Resolução de problemas" }
+    ],
+    "examples": [
+      "I have experience in customer service.",
+      "I am responsible and organized.",
+      "I like teamwork."
+    ],
+    "exercise": {
+      "question": "Qual opção é melhor para entrevista?",
+      "options": [
+        "I lazy sometimes",
+        "I have experience in sales",
+        "No work me"
+      ],
+      "answer": "I have experience in sales"
+    },
+    "finalTip": "Em entrevistas, prefira frases simples e profissionais."
+  },
+  "4": {
+    "goal": "Aprender frases de supermercado.",
+    "vocabulary": [
+      { "en": "How much is this?", "pt": "Quanto custa isso?" },
+      { "en": "Where is the milk?", "pt": "Onde está o leite?" },
+      { "en": "I need a bag", "pt": "Eu preciso de uma sacola" }
+    ],
+    "examples": [
+      "How much is this?",
+      "Where is the bread?",
+      "I need a bag, please."
+    ],
+    "exercise": {
+      "question": "Como perguntar 'Quanto custa isso?'?",
+      "options": ["Where is this?", "How much is this?", "This is good?"],
+      "answer": "How much is this?"
+    },
+    "finalTip": "Use 'please' para soar mais educado."
+  },
+  "5": {
+    "goal": "Aprender frases para consulta médica.",
+    "vocabulary": [
+      { "en": "I have a headache", "pt": "Estou com dor de cabeça" },
+      { "en": "I feel sick", "pt": "Estou me sentindo mal" },
+      { "en": "I need a doctor", "pt": "Preciso de um médico" }
+    ],
+    "examples": [
+      "I have a headache.",
+      "I feel sick today.",
+      "I need a doctor."
+    ],
+    "exercise": {
+      "question": "Como dizer 'Estou com dor de cabeça'?",
+      "options": ["I have a headache", "I have a hospital", "I am doctor"],
+      "answer": "I have a headache"
+    },
+    "finalTip": "Para sintomas, 'I have...' é muito comum."
+  },
+  "6": {
+    "goal": "Aprender frases para ônibus e metrô.",
+    "vocabulary": [
+      { "en": "Where is the bus stop?", "pt": "Onde fica o ponto de ônibus?" },
+      { "en": "Which line do I take?", "pt": "Qual linha eu pego?" },
+      { "en": "I need the subway", "pt": "Eu preciso do metrô" }
+    ],
+    "examples": [
+      "Where is the bus stop?",
+      "Which line do I take?",
+      "I need the subway."
+    ],
+    "exercise": {
+      "question": "Como perguntar 'Onde fica o ponto de ônibus?'",
+      "options": [
+        "Where is the bus stop?",
+        "Where is the bus car?",
+        "How bus go?"
+      ],
+      "answer": "Where is the bus stop?"
+    },
+    "finalTip": "Perguntas com 'Where is...?' ajudam muito no transporte."
+  }
+}

@@ -1,50 +1,96 @@
-# Welcome to your Expo app 👋
+# 📱 Mini Learna Offline
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicativo mobile para aprendizado de inglês com interação por chat e voz, desenvolvido com React Native (Expo) e STT local usando Whisper.
 
-## Get started
+---
 
-1. Install dependencies
+## 🚀 Visão Geral
 
-   ```bash
-   npm install
-   ```
+O **Mini Learna** é um app estilo tutor de inglês com foco em:
 
-2. Start the app
+- Conversação livre com IA
+- Correção automática de frases
+- Revisão de erros
+- Lições com progresso local
+- Entrada por voz com transcrição (Speech-to-Text)
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## 🧠 Funcionalidades
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### 💬 Conversa Livre
+- Chat com IA (conversationEngine)
+- Correção de frases em inglês
+- Sugestões de melhoria
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### 🎤 Voz (STT)
+- Gravação direto no app
+- Transcrição com Whisper local (Python)
+- Integração automática com o chat
 
-## Get a fresh project
+### 📊 Revisão de Erros
+- Histórico de correções
+- Aprendizado baseado em erros do usuário
 
-When you're ready, run:
+### 📚 Lições
+- Progresso salvo localmente (SQLite)
+- Estrutura modular para expansão
+
+---
+
+## 🏗️ Arquitetura
+
+mini-learna-offline/
+├── app/ (Expo)
+├── src/
+├── stt-local/
+└── README.md
+
+---
+
+## ⚙️ Tecnologias
+
+Frontend:
+- React Native
+- Expo SDK 54
+- SQLite
+
+Backend:
+- Python
+- FastAPI
+- Faster-Whisper
+- FFmpeg
+
+---
+
+## ▶️ Como rodar
 
 ```bash
-npm run reset-project
+git clone https://github.com/lincoln743/mini-learna-offline.git
+cd mini-learna-offline
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+STT:
 
-## Learn more
+```bash
+cd stt-local
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+WHISPER_MODEL=small python3 -m uvicorn server:app --host 0.0.0.0 --port 8000
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+---
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 🧪 Status
 
-## Join the community
+✔ Funcional  
+🚧 Em evolução (TTS, performance)
 
-Join our community of developers creating universal apps.
+---
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 👨‍💻 Autor
+
+Lincoln Pereira

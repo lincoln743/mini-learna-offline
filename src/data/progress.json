@@ -1,0 +1,12 @@
+{
+  "lastLessonId": "3",
+  "completedLessons": ["1", "2"],
+  "lessonProgress": {
+    "1": 100,
+    "2": 100,
+    "3": 45,
+    "4": 0,
+    "5": 0,
+    "6": 0
+  }
+}

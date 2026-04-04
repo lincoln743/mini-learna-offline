@@ -56,18 +56,7 @@ export default function TutorScreen() {
       text: trimmed,
     };
 
-    let result;
-
-    try {
-      result = await getAiReply(trimmed);
-    } catch (error) {
-      console.log('[TUTOR] AI ERROR =', error);
-      result = {
-        reply: "Sorry, I couldn't respond.",
-        correction: '',
-        suggestion: '',
-      };
-    }
+    const result = await getAiReply(trimmed);
 
     const assistantMessage = {
       id: makeId(),

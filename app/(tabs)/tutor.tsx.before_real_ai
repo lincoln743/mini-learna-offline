@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../src/styles/theme';
-import { getAiReply } from '../../src/services/aiService';
+import { buildAiReply } from '../../src/services/conversationEngine';
 import { speakTutorText } from '../../src/services/ttsService';
 import { useVoiceInput } from '../../src/hooks/useVoiceInput';
 import { useReviewMistakes } from '../../src/hooks/useReviewMistakes';
@@ -56,18 +56,7 @@ export default function TutorScreen() {
       text: trimmed,
     };
 
-    let result;
-
-    try {
-      result = await getAiReply(trimmed);
-    } catch (error) {
-      console.log('[TUTOR] AI ERROR =', error);
-      result = {
-        reply: "Sorry, I couldn't respond.",
-        correction: '',
-        suggestion: '',
-      };
-    }
+    const result = buildAiReply(trimmed);
 
     const assistantMessage = {
       id: makeId(),

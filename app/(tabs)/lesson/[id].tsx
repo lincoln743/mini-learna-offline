@@ -5,9 +5,27 @@ import lessons from '../../../src/data/lessons.json';
 import lessonContent from '../../../src/data/lessonContent.json';
 import { colors } from '../../../src/styles/theme';
 import { useProgressData } from '../../../src/hooks/useProgressData';
+import { getAllLessons } from '../../../src/services/lessonService';
 
 const STEP_PROGRESS = [20, 40, 65, 85, 100];
 const STEP_TITLES = ['Objetivo', 'Vocabulário', 'Exemplos', 'Exercício', 'Conclusão'];
+
+const THEME_TRANSLATIONS = {
+  'menstruação': 'Menstruation',
+  'história da guitarra': 'History of the Guitar',
+  'entrevista': 'Job Interview',
+  'viagem': 'Travel',
+  'restaurante': 'Restaurant',
+  'trabalho': 'Work',
+  'compras': 'Shopping',
+  'apresentação pessoal': 'Self Introduction',
+  'hotel': 'Hotel',
+  'aeroporto': 'Airport',
+  'telefone': 'Phone Call',
+  'reunião': 'Meeting',
+  'médico': 'Doctor Visit',
+  'mercado': 'Supermarket',
+};
 
 function getStepFromProgress(progress) {
   if (progress >= 100) return 4;
@@ -18,15 +36,191 @@ function getStepFromProgress(progress) {
   return 0;
 }
 
+function translateTheme(theme) {
+  const raw = String(theme || '').trim();
+  const key = raw.toLowerCase();
+  return THEME_TRANSLATIONS[key] || raw;
+}
+
+function looksPortuguese(text) {
+  const value = String(text || '').toLowerCase();
+  if (!value) return false;
+
+  const markers = [
+    ' lição ',
+    ' sobre ',
+    ' prática ',
+    ' pratique ',
+    ' escolha ',
+    ' frase ',
+    ' resposta ',
+    ' correta ',
+    ' inglês ',
+    ' instrumento ',
+    ' história ',
+    ' guitarra ',
+    ' menstruação ',
+    ' reunião ',
+    ' médico ',
+    ' mercado ',
+    ' viagem ',
+    ' trabalho ',
+    ' compras ',
+    ' apresentação ',
+    ' você ',
+    ' qual ',
+    ' aqui estão ',
+    ' descubra ',
+    ' aprenda ',
+    ' os ',
+    ' as ',
+    ' um ',
+    ' uma ',
+    ' de ',
+    ' para ',
+  ];
+
+  return markers.some((marker) => value.includes(marker.trim()) || value.includes(marker));
+}
+
+function sanitizeLesson(lesson) {
+  if (!lesson) return lesson;
+
+  const categoryPt = String(lesson.category || 'Conversation').trim();
+  const categoryEn = translateTheme(categoryPt);
+
+  const safeTitle = looksPortuguese(lesson.title)
+    ? categoryEn
+    : String(lesson.title || categoryEn).trim();
+
+  const safeTitlePt = String(
+    lesson.titlePt || `Lição sobre ${categoryPt}`
+  ).trim();
+
+  const safeDescription = looksPortuguese(lesson.description)
+    ? `Practice English about ${categoryEn}.`
+    : String(lesson.description || `Practice English about ${categoryEn}.`).trim();
+
+  const safeSteps = Array.isArray(lesson.steps)
+    ? lesson.steps.map((step) => {
+        if (step.type === 'multiple_choice') {
+          return {
+            ...step,
+            question: looksPortuguese(step.question)
+              ? `Choose the best sentence about ${categoryEn}.`
+              : String(step.question || `Choose the best sentence about ${categoryEn}.`).trim(),
+            options: Array.isArray(step.options) && step.options.length > 0
+              ? step.options.map((option, index) => {
+                  if (!looksPortuguese(option)) return String(option).trim();
+
+                  if (index === 0) return `I can talk about ${categoryEn}.`;
+                  if (index === 1) return `I talking about ${categoryEn}.`;
+                  return `Me talk about ${categoryEn}.`;
+                })
+              : [
+                  `I can talk about ${categoryEn}.`,
+                  `I talking about ${categoryEn}.`,
+                  `Me talk about ${categoryEn}.`,
+                ],
+            correctIndex:
+              typeof step.correctIndex === 'number' ? step.correctIndex : 0,
+          };
+        }
+
+        if (step.type === 'speak') {
+          return {
+            ...step,
+            prompt: looksPortuguese(step.prompt)
+              ? `Say one simple sentence about ${categoryEn}.`
+              : String(step.prompt || `Say one simple sentence about ${categoryEn}.`).trim(),
+          };
+        }
+
+        return step;
+      })
+    : [];
+
+  return {
+    ...lesson,
+    title: safeTitle,
+    titlePt: safeTitlePt,
+    description: safeDescription,
+    category: categoryPt,
+    steps: safeSteps,
+  };
+}
+
+function normalizeGeneratedContent(lesson) {
+  if (!lesson || !Array.isArray(lesson.steps)) return null;
+
+  const multipleChoiceStep = lesson.steps.find((step) => step.type === 'multiple_choice');
+  const speakStep = lesson.steps.find((step) => step.type === 'speak');
+  const categoryEn = translateTheme(lesson.category || lesson.title || 'Conversation');
+
+  return {
+    goal:
+      looksPortuguese(lesson.description)
+        ? `Practice English about ${categoryEn}.`
+        : lesson.description || 'Practice this lesson step by step and focus on speaking naturally.',
+    vocabulary: [
+      {
+        en: lesson.title || categoryEn,
+        pt: lesson.titlePt || 'Conversa',
+      },
+      {
+        en: categoryEn,
+        pt: lesson.category || 'Tema',
+      },
+    ],
+    examples: [
+      speakStep?.prompt || `Let's practice ${lesson.title || categoryEn}.`,
+      `Topic: ${categoryEn}`,
+    ],
+    exercise: multipleChoiceStep
+      ? {
+          question: multipleChoiceStep.question || `Choose the best sentence about ${categoryEn}.`,
+          options: multipleChoiceStep.options || [],
+          answer:
+            typeof multipleChoiceStep.correctIndex === 'number'
+              ? multipleChoiceStep.options?.[multipleChoiceStep.correctIndex] || ''
+              : '',
+        }
+      : {
+          question: `Choose the best sentence about ${categoryEn}.`,
+          options: [
+            `I can talk about ${categoryEn}.`,
+            `I talking about ${categoryEn}.`,
+            `Me talk about ${categoryEn}.`,
+          ],
+          answer: `I can talk about ${categoryEn}.`,
+        },
+    finalTip:
+      speakStep?.prompt ||
+      `Say one simple sentence about ${categoryEn}.`,
+  };
+}
+
 export default function LessonDetailsScreen() {
   const { id } = useLocalSearchParams();
-  const lesson = lessons.find((item) => item.id === String(id));
-  const content = lessonContent[String(id)];
   const { progressMap, updateLessonProgress } = useProgressData();
+
+  const lesson = useMemo(() => {
+    const allLessons = getAllLessons();
+    const found =
+      allLessons.find((item) => item.id === String(id)) ||
+      lessons.find((item) => item.id === String(id));
+
+    return sanitizeLesson(found);
+  }, [id]);
+
+  const content = useMemo(() => {
+    const staticContent = lessonContent[String(id)];
+    if (staticContent) return staticContent;
+    return normalizeGeneratedContent(lesson);
+  }, [id, lesson]);
 
   const lessonState = progressMap[String(id)] || {};
   const currentSavedProgress = lessonState.progress || 0;
-  const unlocked = lessonState.unlocked ?? (String(id) === '1');
 
   const [stepIndex, setStepIndex] = useState(getStepFromProgress(currentSavedProgress));
   const [selectedOption, setSelectedOption] = useState(null);
@@ -35,6 +229,11 @@ export default function LessonDetailsScreen() {
   useEffect(() => {
     setStepIndex(getStepFromProgress(currentSavedProgress));
   }, [currentSavedProgress]);
+
+  useEffect(() => {
+    if (!id) return;
+    updateLessonProgress(String(id), currentSavedProgress || 0);
+  }, [id]);
 
   if (!lesson || !content) {
     return (
@@ -47,23 +246,12 @@ export default function LessonDetailsScreen() {
     );
   }
 
-  if (!unlocked) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.notFound}>Lição bloqueada.</Text>
-        <Text style={styles.lockedHelp}>Conclua a lição anterior para desbloquear esta etapa.</Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
-          <Text style={styles.buttonText}>Voltar</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   const progress = STEP_PROGRESS[stepIndex] || 0;
   const stepTitle = STEP_TITLES[stepIndex];
   const isExerciseStep = stepIndex === 3;
   const isCorrectAnswer = selectedOption === content.exercise.answer;
   const canAdvanceFromExercise = !isExerciseStep || exerciseChecked;
+
   const stepStatuses = STEP_TITLES.map((_, index) => {
     if (index < stepIndex) return 'done';
     if (index === stepIndex) return 'current';
@@ -156,8 +344,15 @@ export default function LessonDetailsScreen() {
 
           {exerciseChecked && (
             <View style={styles.feedbackBox}>
-              <Text style={[styles.feedbackText, isCorrectAnswer ? styles.correctText : styles.wrongText]}>
-                {isCorrectAnswer ? 'Resposta correta.' : `Resposta correta: ${content.exercise.answer}`}
+              <Text
+                style={[
+                  styles.feedbackText,
+                  isCorrectAnswer ? styles.correctText : styles.wrongText,
+                ]}
+              >
+                {isCorrectAnswer
+                  ? 'Resposta correta.'
+                  : `Resposta correta: ${content.exercise.answer}`}
               </Text>
             </View>
           )}
@@ -252,7 +447,7 @@ export default function LessonDetailsScreen() {
         <TouchableOpacity
           style={[
             styles.navButton,
-            (!canAdvanceFromExercise || stepIndex === 4) && styles.disabledButton
+            (!canAdvanceFromExercise || stepIndex === 4) && styles.disabledButton,
           ]}
           onPress={goNext}
           disabled={!canAdvanceFromExercise || stepIndex === 4}
@@ -275,19 +470,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20
+    padding: 20,
   },
   notFound: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 12
-  },
-  lockedHelp: {
-    textAlign: 'center',
-    color: colors.textSoft,
-    lineHeight: 22,
-    marginBottom: 18
+    marginBottom: 12,
   },
 
   backButton: {
@@ -298,11 +487,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border
+    borderColor: colors.border,
   },
   backButtonText: {
     color: colors.text,
-    fontWeight: '700'
+    fontWeight: '700',
   },
 
   badge: {
@@ -311,23 +500,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
-    marginBottom: 14
+    marginBottom: 14,
   },
   badgeText: {
     color: colors.primary,
-    fontWeight: '700'
+    fontWeight: '700',
   },
 
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: colors.text
+    color: colors.text,
   },
   subtitle: {
     fontSize: 16,
     color: colors.textSoft,
     marginTop: 4,
-    marginBottom: 18
+    marginBottom: 18,
   },
 
   progressCard: {
@@ -336,35 +525,35 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: 16,
-    marginBottom: 18
+    marginBottom: 18,
   },
   progressLabel: {
     color: colors.textSoft,
-    fontWeight: '700'
+    fontWeight: '700',
   },
   progressStep: {
     fontSize: 20,
     fontWeight: '800',
     color: colors.text,
     marginTop: 4,
-    marginBottom: 12
+    marginBottom: 12,
   },
   progressBarBg: {
     width: '100%',
     height: 12,
     backgroundColor: '#e5e7eb',
     borderRadius: 999,
-    overflow: 'hidden'
+    overflow: 'hidden',
   },
   progressBarFill: {
     height: 12,
     backgroundColor: colors.primary,
-    borderRadius: 999
+    borderRadius: 999,
   },
   progressText: {
     marginTop: 8,
     color: colors.textSoft,
-    fontWeight: '700'
+    fontWeight: '700',
   },
 
   stepRow: {
@@ -423,32 +612,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: 16,
-    marginBottom: 18
+    marginBottom: 18,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '800',
     color: colors.text,
-    marginBottom: 10
+    marginBottom: 10,
   },
   text: {
     color: colors.textSoft,
-    lineHeight: 22
+    lineHeight: 22,
   },
 
   vocabRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border
+    borderBottomColor: colors.border,
   },
   vocabEn: {
     fontSize: 16,
     fontWeight: '800',
-    color: colors.text
+    color: colors.text,
   },
   vocabPt: {
     color: colors.textSoft,
-    marginTop: 2
+    marginTop: 2,
   },
 
   exampleBox: {
@@ -457,18 +646,18 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 12,
     padding: 12,
-    marginBottom: 10
+    marginBottom: 10,
   },
   exampleText: {
     color: colors.text,
-    lineHeight: 22
+    lineHeight: 22,
   },
 
   textQuestion: {
     color: colors.text,
     fontWeight: '700',
     lineHeight: 22,
-    marginBottom: 12
+    marginBottom: 12,
   },
   optionButton: {
     borderWidth: 1,
@@ -476,18 +665,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 12,
     padding: 12,
-    marginBottom: 10
+    marginBottom: 10,
   },
   optionButtonActive: {
     borderColor: colors.primary,
-    backgroundColor: colors.primarySoft
+    backgroundColor: colors.primarySoft,
   },
   optionText: {
     color: colors.text,
-    fontWeight: '600'
+    fontWeight: '600',
   },
   optionTextActive: {
-    color: colors.primary
+    color: colors.primary,
   },
 
   secondaryButton: {
@@ -497,11 +686,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 4
+    marginTop: 4,
   },
   secondaryButtonText: {
     color: colors.text,
-    fontWeight: '800'
+    fontWeight: '800',
   },
 
   feedbackBox: {
@@ -510,16 +699,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: colors.border
+    borderColor: colors.border,
   },
   feedbackText: {
-    fontWeight: '800'
+    fontWeight: '800',
   },
   correctText: {
-    color: colors.success
+    color: colors.success,
   },
   wrongText: {
-    color: colors.danger
+    color: colors.danger,
   },
   exerciseHint: {
     marginTop: 12,
@@ -529,19 +718,19 @@ const styles = StyleSheet.create({
 
   navigationRow: {
     flexDirection: 'row',
-    gap: 10
+    gap: 10,
   },
   navButton: {
     flex: 1,
     backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 15,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   navButtonText: {
     color: '#fff',
     fontWeight: '800',
-    fontSize: 16
+    fontSize: 16,
   },
   navButtonOutline: {
     flex: 1,
@@ -550,26 +739,27 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 14,
     paddingVertical: 15,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   navButtonOutlineText: {
     color: colors.text,
     fontWeight: '800',
-    fontSize: 16
+    fontSize: 16,
   },
   disabledButton: {
-    opacity: 0.5
+    opacity: 0.5,
   },
 
   button: {
     backgroundColor: colors.primary,
     borderRadius: 14,
+    paddingHorizontal: 24,
     paddingVertical: 15,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   buttonText: {
     color: '#fff',
     fontWeight: '800',
-    fontSize: 16
-  }
+    fontSize: 16,
+  },
 });

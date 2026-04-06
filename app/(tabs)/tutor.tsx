@@ -46,7 +46,10 @@ export default function TutorScreen() {
     },
   ]);
 
-  const canSend = useMemo(() => input.trim().length > 0, [input]);
+  const canSend = useMemo(
+    () => input.trim().length > 0 && !isHandlingRef.current,
+    [input]
+  );
 
   useEffect(() => {
     resetVoiceState();
@@ -63,20 +66,32 @@ export default function TutorScreen() {
 
   const handleSend = async (rawText?: string) => {
     const trimmed = String(rawText ?? input).trim();
+
     if (!trimmed) return;
-    if (isHandlingRef.current) return;
+    if (isHandlingRef.current) {
+      console.log('[TUTOR] envio bloqueado: já processando');
+      return;
+    }
 
     isHandlingRef.current = true;
 
     try {
       Keyboard.dismiss();
       await stopTutorSpeech();
+      stopSpeaking();
 
       const userMessage = {
         id: makeId(),
         role: 'user',
         text: trimmed,
       };
+
+      setMessages((prev) => [...prev, userMessage]);
+      setInput('');
+
+      requestAnimationFrame(() => {
+        scrollToBottom();
+      });
 
       let result;
 
@@ -91,36 +106,51 @@ export default function TutorScreen() {
         };
       }
 
+      const safeReply = String(result?.reply || '').trim();
+      const safeCorrection = String(result?.correction || '').trim();
+      const safeSuggestion = String(result?.suggestion || '').trim();
+
+      if (!safeReply) {
+        console.log('[TUTOR] resposta vazia/cancelada, ignorando');
+        finishProcessing();
+        return;
+      }
+
       const assistantMessage = {
         id: makeId(),
         role: 'assistant',
-        text: result.reply,
-        correction: result.correction,
-        suggestion: result.suggestion,
+        text: safeReply,
+        correction: safeCorrection,
+        suggestion: safeSuggestion,
       };
 
-      setMessages((prev) => [...prev, userMessage, assistantMessage]);
-      setInput('');
+      setMessages((prev) => [...prev, assistantMessage]);
 
       requestAnimationFrame(() => {
         scrollToBottom();
       });
 
-      if (result.correction) {
+      if (safeCorrection) {
         addMistake({
           originalText: trimmed,
-          correctedText: result.correction,
+          correctedText: safeCorrection,
           explanation:
-            result.suggestion || 'Correction suggested during free conversation.',
-          exampleText: result.reply,
+            safeSuggestion || 'Correction suggested during free conversation.',
+          exampleText: safeReply,
           errorType: 'Conversa livre',
         });
       }
 
       finishProcessing();
-      startSpeaking();
 
-      await speakTutorText(result.reply, {
+      const speakingStarted = startSpeaking();
+
+      if (!speakingStarted) {
+        console.log('[TUTOR] startSpeaking bloqueado');
+        return;
+      }
+
+      await speakTutorText(safeReply, {
         onDone: () => {
           stopSpeaking();
         },
@@ -133,6 +163,7 @@ export default function TutorScreen() {
       });
     } finally {
       finishProcessing();
+      stopSpeaking();
       isHandlingRef.current = false;
     }
   };
@@ -144,17 +175,31 @@ export default function TutorScreen() {
   });
 
   const handleMicPress = async () => {
+    if (isHandlingRef.current) {
+      console.log('[TUTOR] mic bloqueado: IA processando');
+      return;
+    }
+
     if (isRecording) {
       stopRecording();
       await toggleRecording();
       return;
     }
 
-    if (!canStartRecording()) return;
+    if (!canStartRecording()) {
+      console.log('[TUTOR] mic bloqueado: estado de voz inválido');
+      return;
+    }
 
     await stopTutorSpeech();
     stopSpeaking();
-    startRecording();
+
+    const started = startRecording();
+    if (!started) {
+      console.log('[TUTOR] startRecording bloqueado');
+      return;
+    }
+
     await toggleRecording();
   };
 
@@ -250,12 +295,14 @@ export default function TutorScreen() {
             value={input}
             onChangeText={setInput}
             multiline
-            returnKeyType="default"
+            returnKeyType="send"
+            blurOnSubmit={false}
+            onSubmitEditing={() => handleSend(input)}
           />
 
           <TouchableOpacity
             style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
-            onPress={() => handleSend()}
+            onPress={() => handleSend(input)}
             disabled={!canSend}
           >
             <Ionicons name="send" size={18} color="#fff" />

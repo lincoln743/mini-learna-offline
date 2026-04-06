@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 
 import requests
 from fastapi import FastAPI, UploadFile, File
@@ -65,15 +66,23 @@ def extract_json_block(text: str):
     if not text:
         return None
 
+    cleaned = text
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:].strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned[3:].strip()
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3].strip()
+
     try:
-        return json.loads(text)
+        return json.loads(cleaned)
     except Exception:
         pass
 
-    start = text.find("{")
-    end = text.rfind("}")
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
     if start != -1 and end != -1 and end > start:
-        candidate = text[start:end + 1]
+        candidate = cleaned[start:end + 1]
         try:
             return json.loads(candidate)
         except Exception:
@@ -82,60 +91,67 @@ def extract_json_block(text: str):
     return None
 
 
-def build_messages(user_text: str, session_id: str):
-    history = memory.get_messages(session_id)
+def build_tutor_messages(user_text: str, session_id: str):
+    history = memory.get_messages(session_id)[-4:]
 
     return [
         {
             "role": "system",
-            "content": """You are a friendly English conversation tutor for Brazilian learners.
+            "content": """You are a friendly English tutor for Brazilian learners.
 
-You must always return valid JSON only:
+Return valid JSON only:
 {"reply":"...","correction":"...","suggestion":"..."}
 
-Main goal:
-Have a real conversation in English.
-
-Important behavior:
-- Do not repeat the user's sentence in reply.
-- Do not paraphrase the user's sentence unless you are correcting it.
-- Do not say the same idea again with different words.
-- Always move the conversation forward.
-- If the user asks you to start a conversation, actually start one.
-- Be proactive and ask one short natural question when helpful.
-- Sound like a real tutor, not a robot.
-- Be warm, simple, and short.
-
-Teaching rules:
-- reply = natural conversational reply in English
-- correction = corrected version only if there is an important mistake
-- suggestion = one very short explanation only if useful
-- If the user's sentence is already good enough, leave correction empty
-- Never over-explain grammar
-- Prefer natural spoken English
-
-Anti-repetition rules:
-- reply must not copy the user's wording
-- reply must add a new idea, reaction, or question
-- if the user says "start a conversation", reply with a topic and a question
-- if the user introduces themself, react naturally and ask a follow-up question
-
-Good examples:
-User: I want you to start a conversation with me.
-Reply: Of course! Let's start with something simple. What do you usually do on weekends?
-
-User: My name is Lincoln.
-Reply: Nice to meet you, Lincoln! What do you enjoy doing in your free time?
-
-User: I live in Brazil.
-Reply: That's great! Which city do you live in?
-
-Output rules:
-- Never return anything outside the JSON object
-- Keep reply short
-- Ask at most one short question"""
+Rules:
+- Answer only from the user's last message
+- Keep the same topic
+- Keep reply short and natural
+- Ask at most one short follow-up question
+- Do not repeat the user's sentence
+- correction only if really needed
+- suggestion very short or empty
+- never write anything outside JSON"""
         },
         *history,
+        {
+            "role": "user",
+            "content": user_text,
+        }
+    ]
+
+
+def build_lesson_messages(user_text: str):
+    return [
+        {
+            "role": "system",
+            "content": """You create very short English lessons for Brazilian learners.
+
+Return ONLY one valid JSON object:
+{
+  "title":"...",
+  "titlePt":"...",
+  "description":"...",
+  "steps":[
+    {
+      "type":"multiple_choice",
+      "question":"...",
+      "options":["...","...","..."],
+      "correctIndex":0
+    },
+    {
+      "type":"speak",
+      "prompt":"..."
+    }
+  ]
+}
+
+Rules:
+- Output JSON only
+- No markdown
+- No extra explanation
+- Keep description very short
+- Exactly 2 steps"""
+        },
         {
             "role": "user",
             "content": user_text,
@@ -150,15 +166,15 @@ def warmup_ollama():
             "stream": False,
             "keep_alive": -1,
             "options": {
-                "num_predict": 16,
+                "num_predict": 12,
                 "temperature": 0.2,
                 "top_p": 0.9,
-                "num_ctx": 768,
+                "num_ctx": 512,
             },
             "messages": [
                 {
                     "role": "system",
-                    "content": 'Return valid JSON only: {"reply":"Hello! What do you like to do on weekends?","correction":"","suggestion":""}'
+                    "content": 'Return valid JSON only: {"reply":"Hello! What do you like to do in your free time?","correction":"","suggestion":""}'
                 },
                 {
                     "role": "user",
@@ -166,7 +182,7 @@ def warmup_ollama():
                 },
             ],
         }
-        requests.post(OLLAMA_URL, json=body, timeout=60)
+        requests.post(OLLAMA_URL, json=body, timeout=45)
         print(f"[AI] warmup ok: {OLLAMA_MODEL}")
     except Exception as e:
         print(f"[AI] warmup falhou: {e}")
@@ -189,6 +205,8 @@ def health():
 
 @app.post("/chat")
 async def chat(payload: dict):
+    started_at = time.time()
+
     user_text = str(payload.get("text") or "").strip()
     session_id = str(payload.get("session_id") or "default").strip() or "default"
 
@@ -196,22 +214,46 @@ async def chat(payload: dict):
         return {"ok": False, "error": "Texto vazio."}
 
     try:
-        body = {
-            "model": OLLAMA_MODEL,
-            "stream": False,
-            "keep_alive": -1,
-            "options": {
-                "num_predict": 80,
-                "temperature": 0.4,
-                "top_p": 0.9,
-                "num_ctx": 1024,
-                "repeat_penalty": 1.12,
-            },
-            "messages": build_messages(user_text, session_id),
-        }
+        is_lesson_request = (
+            "Create a very short English lesson" in user_text
+            or "Create a short English lesson" in user_text
+        )
 
-        response = requests.post(OLLAMA_URL, json=body, timeout=60)
-        data = response.json()
+        if is_lesson_request:
+            body = {
+                "model": OLLAMA_MODEL,
+                "stream": False,
+                "keep_alive": -1,
+                "options": {
+                    "num_predict": 220,
+                    "temperature": 0.3,
+                    "top_p": 0.9,
+                    "num_ctx": 1024,
+                    "repeat_penalty": 1.1,
+                },
+                "messages": build_lesson_messages(user_text),
+            }
+        else:
+            body = {
+                "model": OLLAMA_MODEL,
+                "stream": False,
+                "keep_alive": -1,
+                "options": {
+                    "num_predict": 48,
+                    "temperature": 0.25,
+                    "top_p": 0.9,
+                    "num_ctx": 768,
+                    "repeat_penalty": 1.12,
+                },
+                "messages": build_tutor_messages(user_text, session_id),
+            }
+
+        response = requests.post(OLLAMA_URL, json=body, timeout=90)
+
+        try:
+            data = response.json()
+        except Exception:
+            data = {"error": response.text}
 
         if not response.ok:
             return {"ok": False, "error": data}
@@ -221,6 +263,21 @@ async def chat(payload: dict):
             if isinstance(data, dict)
             else ""
         )
+
+        if is_lesson_request:
+            parsed_lesson = extract_json_block(raw_reply)
+            if not parsed_lesson:
+                return {"ok": False, "error": "Ollama não retornou lição válida."}
+
+            elapsed = round(time.time() - started_at, 2)
+            print(f"[CHAT] lesson ok in {elapsed}s")
+
+            return {
+                "ok": True,
+                "reply": json.dumps(parsed_lesson, ensure_ascii=False),
+                "correction": "",
+                "suggestion": "",
+            }
 
         parsed = extract_json_block(raw_reply)
 
@@ -239,6 +296,9 @@ async def chat(payload: dict):
         memory.add_user_message(session_id, user_text)
         memory.add_assistant_message(session_id, reply)
 
+        elapsed = round(time.time() - started_at, 2)
+        print(f"[CHAT] ok in {elapsed}s")
+
         return {
             "ok": True,
             "reply": reply,
@@ -247,7 +307,8 @@ async def chat(payload: dict):
         }
 
     except Exception as e:
-        print(f"[CHAT] erro: {e}")
+        elapsed = round(time.time() - started_at, 2)
+        print(f"[CHAT] erro after {elapsed}s: {e}")
         return {"ok": False, "error": str(e)}
 
 

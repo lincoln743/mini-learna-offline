@@ -9,8 +9,10 @@ import { transcribeAudioAsync } from '../services/sttService';
 
 export function useVoiceInput({ onTranscript }) {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+
   const startedAtRef = useRef(0);
   const isBusyRef = useRef(false);
+  const isTranscribingRef = useRef(false);
 
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -27,7 +29,10 @@ export function useVoiceInput({ onTranscript }) {
   }, []);
 
   const startRecording = useCallback(async () => {
-    if (isBusyRef.current || isRecording || isTranscribing) return;
+    if (isBusyRef.current || isRecording || isTranscribingRef.current) {
+      console.log('[VOICE] start blocked');
+      return;
+    }
 
     isBusyRef.current = true;
 
@@ -53,14 +58,16 @@ export function useVoiceInput({ onTranscript }) {
     } catch (error) {
       console.log('[VOICE] startRecording error =', error);
       await resetAudioMode();
-      throw error;
     } finally {
       isBusyRef.current = false;
     }
-  }, [isRecording, isTranscribing, recorder, resetAudioMode]);
+  }, [isRecording, recorder, resetAudioMode]);
 
   const stopRecording = useCallback(async () => {
-    if (isBusyRef.current || !isRecording) return null;
+    if (isBusyRef.current || !isRecording) {
+      console.log('[VOICE] stop blocked');
+      return null;
+    }
 
     isBusyRef.current = true;
     setIsRecording(false);
@@ -72,26 +79,32 @@ export function useVoiceInput({ onTranscript }) {
       const audioUri = recorder.uri;
 
       console.log('[VOICE] gravação finalizada, ms =', elapsedMs);
-      console.log('[VOICE] gravação finalizada, uri =', audioUri);
 
       await resetAudioMode();
 
-      if (elapsedMs < 700) {
-        console.log('[VOICE] gravação descartada: muito curta');
+      if (elapsedMs < 800) {
+        console.log('[VOICE] ignorado: áudio muito curto');
         return null;
       }
 
       if (!audioUri) {
-        console.log('[VOICE] gravação descartada: sem uri');
+        console.log('[VOICE] ignorado: sem uri');
         return null;
       }
 
+      if (isTranscribingRef.current) {
+        console.log('[VOICE] já transcrevendo, ignorando');
+        return null;
+      }
+
+      isTranscribingRef.current = true;
       setIsTranscribing(true);
 
       const transcript = await transcribeAudioAsync(audioUri);
+
       console.log('[VOICE] transcript =', transcript);
 
-      if (onTranscript && transcript && String(transcript).trim()) {
+      if (onTranscript && transcript && transcript.trim()) {
         await onTranscript(transcript);
       }
 
@@ -100,6 +113,7 @@ export function useVoiceInput({ onTranscript }) {
       console.log('[VOICE] stopRecording error =', error);
       return null;
     } finally {
+      isTranscribingRef.current = false;
       setIsTranscribing(false);
       await resetAudioMode();
       isBusyRef.current = false;
@@ -110,7 +124,6 @@ export function useVoiceInput({ onTranscript }) {
     if (isRecording) {
       return await stopRecording();
     }
-
     return await startRecording();
   }, [isRecording, startRecording, stopRecording]);
 

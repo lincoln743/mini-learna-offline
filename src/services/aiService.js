@@ -1,10 +1,11 @@
 const AI_URL =
   process.env.EXPO_PUBLIC_AI_URL || 'http://192.168.0.200:8000/chat';
 
+let currentController = null;
+
 export async function getAiReply(userText) {
   const text = String(userText || '').trim();
 
-  console.log('[AI] URL =', AI_URL);
   console.log('[AI] INPUT =', text);
 
   if (!text) {
@@ -15,6 +16,13 @@ export async function getAiReply(userText) {
     };
   }
 
+  // 🔥 cancelar requisição anterior
+  if (currentController) {
+    currentController.abort();
+  }
+
+  currentController = new AbortController();
+
   try {
     const response = await fetch(AI_URL, {
       method: 'POST',
@@ -23,6 +31,7 @@ export async function getAiReply(userText) {
         Accept: 'application/json',
       },
       body: JSON.stringify({ text }),
+      signal: currentController.signal,
     });
 
     const data = await response.json().catch(() => ({}));
@@ -34,7 +43,7 @@ export async function getAiReply(userText) {
       throw new Error(
         typeof data.error === 'string'
           ? data.error
-          : JSON.stringify(data.error || 'Falha ao obter resposta da IA.')
+          : JSON.stringify(data.error || 'Erro IA')
       );
     }
 
@@ -44,6 +53,16 @@ export async function getAiReply(userText) {
       suggestion: String(data.suggestion || '').trim(),
     };
   } catch (error) {
+    // 🔥 erro esperado quando cancela
+    if (error.name === 'AbortError') {
+      console.log('[AI] request cancelada');
+      return {
+        reply: '',
+        correction: '',
+        suggestion: '',
+      };
+    }
+
     console.log('[AI] ERROR =', error);
 
     return {
@@ -51,5 +70,7 @@ export async function getAiReply(userText) {
       correction: '',
       suggestion: '',
     };
+  } finally {
+    currentController = null;
   }
 }

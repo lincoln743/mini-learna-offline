@@ -1,51 +1,67 @@
-let isRecording = false;
-let isProcessing = false;
-let isSpeaking = false;
+let state = 'idle'; 
+// idle | recording | processing | speaking
 
 export function canStartRecording() {
-  return !isRecording && !isProcessing && !isSpeaking;
+  return state === 'idle';
 }
 
 export function startRecording() {
-  isRecording = true;
-  isProcessing = false;
-  isSpeaking = false;
-  console.log('[VOICE CTRL] startRecording');
+  if (state !== 'idle') {
+    console.log('[VOICE CTRL] startRecording BLOCKED:', state);
+    return false;
+  }
+
+  state = 'recording';
+  console.log('[VOICE CTRL] state = recording');
+  return true;
 }
 
 export function stopRecording() {
-  isRecording = false;
-  isProcessing = true;
-  console.log('[VOICE CTRL] stopRecording -> processing');
+  if (state !== 'recording') {
+    console.log('[VOICE CTRL] stopRecording BLOCKED:', state);
+    return false;
+  }
+
+  state = 'processing';
+  console.log('[VOICE CTRL] state = processing');
+  return true;
 }
 
 export function finishProcessing() {
-  isProcessing = false;
-  console.log('[VOICE CTRL] finishProcessing');
+  if (state !== 'processing') return;
+
+  state = 'idle';
+  console.log('[VOICE CTRL] state = idle (after processing)');
 }
 
 export function startSpeaking() {
-  isSpeaking = true;
-  isProcessing = false;
-  console.log('[VOICE CTRL] startSpeaking');
+  if (state !== 'idle') {
+    console.log('[VOICE CTRL] startSpeaking BLOCKED:', state);
+    return false;
+  }
+
+  state = 'speaking';
+  console.log('[VOICE CTRL] state = speaking');
+  return true;
 }
 
 export function stopSpeaking() {
-  isSpeaking = false;
-  console.log('[VOICE CTRL] stopSpeaking');
+  if (state !== 'speaking') return;
+
+  state = 'idle';
+  console.log('[VOICE CTRL] state = idle (after speaking)');
 }
 
 export function resetVoiceState() {
-  isRecording = false;
-  isProcessing = false;
-  isSpeaking = false;
-  console.log('[VOICE CTRL] resetVoiceState');
+  state = 'idle';
+  console.log('[VOICE CTRL] RESET -> idle');
 }
 
 export function getVoiceState() {
   return {
-    isRecording,
-    isProcessing,
-    isSpeaking,
+    isRecording: state === 'recording',
+    isProcessing: state === 'processing',
+    isSpeaking: state === 'speaking',
+    state,
   };
 }

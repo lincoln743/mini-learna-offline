@@ -1,0 +1,9 @@
+ALTERAÇÃO:
+
+Substituir:
+
+onPress={() => handleSend()}
+
+POR:
+
+onPress={() => handleSend(input)}
